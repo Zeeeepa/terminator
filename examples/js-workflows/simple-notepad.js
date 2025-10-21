@@ -1,36 +1,45 @@
-// Simple Notepad Workflow
-// Demonstrates basic JavaScript workflow structure
+#!/usr/bin/env node
+/**
+ * Simple Notepad Workflow - Using terminator.js SDK
+ *
+ * This demonstrates a basic workflow using the SDK directly
+ * with a parseable structure for mediar-app
+ */
 
+const { Desktop } = require('@mediar/terminator');
+
+// Workflow metadata for parsing
 export const workflow = {
-  id: 'simple-notepad-js',
-  name: 'Simple Notepad Test (JavaScript)',
-  description: 'Opens Notepad and types text - defined in JavaScript',
-
-  steps: [
-    {
-      id: 'open-notepad',
-      tool_name: 'open_application',
-      arguments: {
-        app_name: 'notepad'
-      },
-      delay_ms: 3000
-    },
-    {
-      id: 'type-text',
-      tool_name: 'type_into_element',
-      arguments: {
-        selector: 'role:Edit',
-        text: 'Hello from JavaScript workflow!\nThis workflow was defined in a .js file.'
-      },
-      delay_ms: 1000
-    }
-  ]
-};
-
-// Optional: Export metadata separately
-export const metadata = {
-  author: 'Terminator Team',
+  id: 'simple-notepad',
+  name: 'Simple Notepad Test',
+  description: 'Opens Notepad and types a message using the terminator.js SDK',
   version: '1.0.0',
-  tags: ['example', 'javascript', 'notepad'],
-  created_at: '2025-01-21'
 };
+
+// Main workflow function
+async function main() {
+  const desktop = new Desktop();
+
+  console.log('🚀 Step 1: Opening Notepad');
+  desktop.openApplication('notepad');
+  await new Promise(r => setTimeout(r, 3000));
+
+  console.log('⌨️  Step 2: Typing message');
+  const textbox = desktop.locator('role:Edit');
+  await textbox.type('Hello from JavaScript workflow!\n');
+  await textbox.type('This uses the terminator.js SDK directly.\n');
+  await textbox.type('\nCreated at: ' + new Date().toLocaleString());
+
+  console.log('✅ Workflow completed successfully');
+}
+
+// Execute if run directly
+if (require.main === module) {
+  main().catch(error => {
+    console.error('❌ Workflow failed:', error);
+    process.exit(1);
+  });
+}
+
+// Export for programmatic use
+module.exports = { workflow, execute: main };
