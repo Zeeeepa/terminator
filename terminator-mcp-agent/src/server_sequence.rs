@@ -194,17 +194,45 @@ impl DesktopWrapper {
                 ));
             };
 
-            // Debug: Log the raw YAML content
+            // Debug: Log the raw content
             debug!(
-                "Raw YAML content (first 500 chars): {}",
+                "Raw content (first 500 chars): {}",
                 workflow_content.chars().take(500).collect::<String>()
             );
 
-            // Parse the fetched YAML workflow
-            // First check if it's wrapped in execute_sequence structure
-            let remote_workflow: ExecuteSequenceArgs = if workflow_content
-                .contains("tool_name: execute_sequence")
-            {
+            // Check if this is a JavaScript workflow (by file extension or content)
+            let is_js_workflow = url.ends_with(".js")
+                || url.ends_with(".ts")
+                || url.ends_with(".mjs")
+                || workflow_content.trim_start().starts_with("//")
+                || workflow_content.contains("export const workflow")
+                || workflow_content.contains("export default")
+                || workflow_content.contains("module.exports");
+
+            let remote_workflow: ExecuteSequenceArgs = if is_js_workflow {
+                // Parse as JavaScript workflow
+                info!("Detected JavaScript workflow, parsing...");
+                let js_workflow = crate::js_workflow_parser::parse_js_workflow(&workflow_content)
+                    .map_err(|e| {
+                        McpError::invalid_params(
+                            format!("Failed to parse JavaScript workflow: {e}"),
+                            Some(json!({"url": url, "error": e.to_string()})),
+                        )
+                    })?;
+
+                // Convert to execute_sequence format
+                let sequence_value = crate::js_workflow_parser::js_workflow_to_execute_sequence(js_workflow);
+                let sequence_args = sequence_value.get("arguments").unwrap();
+                serde_json::from_value::<ExecuteSequenceArgs>(sequence_args.clone())
+                    .map_err(|e| {
+                        McpError::invalid_params(
+                            format!("Failed to convert JavaScript workflow to execute_sequence: {e}"),
+                            Some(json!({"error": e.to_string()})),
+                        )
+                    })?
+            } else if workflow_content.contains("tool_name: execute_sequence") {
+                // Parse the fetched YAML workflow
+                // First check if it's wrapped in execute_sequence structure
                 // This workflow is wrapped in execute_sequence structure
                 // Parse as a generic Value first to extract the arguments
                 match serde_yaml::from_str::<serde_json::Value>(&workflow_content) {

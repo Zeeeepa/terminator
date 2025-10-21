@@ -211,9 +211,48 @@ desktop.locator('window:Calculator')
 
 You can build and debug selector paths incrementally using `.locator()` chaining.
 
+## JavaScript Workflows
+
+In addition to YAML workflows, Terminator now supports **JavaScript/TypeScript workflows** for better IDE support, type safety, and code reusability:
+
+```javascript
+// workflow.js
+export const workflow = {
+  id: 'my-workflow',
+  name: 'My Automation',
+
+  steps: [
+    {
+      id: 'step1',
+      tool_name: 'open_application',
+      arguments: { app_name: 'notepad' },
+      delay_ms: 2000
+    },
+    {
+      id: 'step2',
+      tool_name: 'type_into_element',
+      arguments: {
+        selector: 'role:Edit',
+        text: 'Hello from JavaScript workflow!'
+      }
+    }
+  ]
+};
+```
+
+**Benefits**:
+- Full IDE autocomplete and syntax highlighting
+- Type safety with TypeScript
+- Reusable helper functions
+- Better version control diffs
+- Compatible with Mastra AI and Inngest patterns
+
+See [JavaScript Workflows Documentation](https://github.com/mediar-ai/terminator/blob/main/docs/JAVASCRIPT_WORKFLOWS.md) and [examples](https://github.com/mediar-ai/terminator/tree/main/examples/js-workflows) for more details.
+
 ## Explore Further
 
 - **[Examples](https://github.com/mediar-ai/terminator/tree/main/examples)**
+- **[JavaScript Workflow Examples](https://github.com/mediar-ai/terminator/tree/main/examples/js-workflows)**
 
 ## Troubleshooting
 
