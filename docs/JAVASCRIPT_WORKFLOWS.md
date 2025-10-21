@@ -1,74 +1,157 @@
-# JavaScript Workflows
+# JavaScript/TypeScript Workflows
 
-JavaScript workflows allow you to write automation scripts using the **terminator.js SDK** with a standardized, parseable structure. This gives you the power of programmatic control with full IDE support, while allowing the mediar-app to parse and display workflow steps.
+Write automation workflows using the **terminator.js SDK** in TypeScript or JavaScript. This gives you full programmatic control with IDE autocomplete and type safety, while allowing mediar-app to parse and display your workflow steps.
 
 ## Overview
 
-Instead of defining workflows as YAML with MCP tool calls, JavaScript workflows use the terminator.js SDK directly but wrap the code in parseable step structures inspired by frameworks like Mastra AI and Inngest.
+JavaScript/TypeScript workflows are **regular Node.js/TypeScript scripts** that use the terminator.js SDK directly. They export metadata for mediar-app to parse and display steps in the UI.
 
-## Why JavaScript Workflows?
+**Key Points:**
+- ✅ Use TypeScript by default for type safety
+- ✅ Import from `@mediar/terminator` package
+- ✅ Write normal async/await code with SDK methods
+- ✅ Export workflow metadata for mediar-app parsing
+- ✅ Run directly with `tsx` or `node`
+- ✅ Compatible with Mastra AI / Inngest patterns
 
-- **Full SDK Access**: Use `Desktop`, `locator()`, `click()`, `type()`, etc. directly
-- **IDE Support**: Autocomplete, type checking, refactoring
-- **Code Reusability**: Share helper functions across workflows
-- **Framework Familiar**: Mastra AI / Inngest-style patterns
-- **Parseable**: mediar-app can extract and display steps
+## Quick Start
 
-## Basic Structure
+### 1. Install Dependencies
 
-### Simple Workflow (Mastra-style)
+```bash
+npm install @mediar/terminator
+npm install -D typescript tsx @types/node
+```
 
-```javascript
-const { Desktop } = require('@mediar/terminator');
-const { createWorkflow, createStep } = require('@mediar/workflow');
+### 2. Create a Workflow (TypeScript)
 
-// Define reusable steps
+```typescript
+// workflow.ts
+import { Desktop } from '@mediar/terminator';
+
+// Export metadata for mediar-app
+export const workflow = {
+  id: 'my-workflow',
+  name: 'My First Workflow',
+  description: 'Automates a simple task',
+};
+
+// Main workflow logic
+async function main() {
+  const desktop = new Desktop();
+
+  console.log('🚀 Step 1: Opening Notepad');
+  desktop.openApplication('notepad');
+  await new Promise(r => setTimeout(r, 2000));
+
+  console.log('⌨️  Step 2: Typing message');
+  const textbox = desktop.locator('role:Edit');
+  await textbox.type('Hello from TypeScript workflow!');
+
+  console.log('✅ Workflow completed');
+}
+
+// Execute
+if (require.main === module) {
+  main().catch(console.error);
+}
+```
+
+### 3. Run It
+
+```bash
+tsx workflow.ts
+```
+
+## Parseable Structure for mediar-app
+
+The mediar-app parses the exported `workflow` object to display steps in the UI:
+
+```typescript
+export const workflow = {
+  id: 'unique-id',           // Required: unique identifier
+  name: 'Display Name',      // Required: human-readable name
+  description: 'What it does', // Optional: description
+  version: '1.0.0',          // Optional: version
+
+  // Optional: Define variables for UI inputs
+  variables: {
+    userName: {
+      type: 'string',
+      label: 'User Name',
+      default: 'John Doe'
+    }
+  },
+
+  // Optional: Explicitly list steps for better parsing
+  steps: [
+    {
+      id: 'step-1',
+      name: 'Open Application',
+      description: 'Opens the target app'
+    },
+    {
+      id: 'step-2',
+      name: 'Fill Form',
+      description: 'Fills in the form fields'
+    }
+  ]
+};
+```
+
+## Framework Patterns
+
+### Mastra AI Style
+
+```typescript
+import { Desktop } from '@mediar/terminator';
+import { createWorkflow, createStep } from '@mastra/core/workflows';
+import { z } from 'zod';
+
 const openNotepad = createStep({
   id: 'open-notepad',
   description: 'Open Notepad application',
-  execute: async ({ desktop }) => {
+  inputSchema: z.object({}),
+  outputSchema: z.object({ success: z.boolean() }),
+  execute: async () => {
+    const desktop = new Desktop();
     console.log('🚀 Opening Notepad...');
-    const app = desktop.openApplication('notepad');
+    desktop.openApplication('notepad');
     await new Promise(r => setTimeout(r, 2000));
-    return { app };
+    return { success: true };
   }
 });
 
 const typeMessage = createStep({
   id: 'type-message',
-  description: 'Type a message into Notepad',
-  execute: async ({ desktop, context }) => {
-    console.log('⌨️  Typing message...');
+  description: 'Type message',
+  inputSchema: z.object({ success: z.boolean() }),
+  outputSchema: z.object({ length: z.number() }),
+  execute: async () => {
+    const desktop = new Desktop();
     const textbox = desktop.locator('role:Edit');
-    await textbox.type('Hello from JavaScript workflow!');
-    return { success: true };
+    const msg = 'Hello from Mastra!';
+    await textbox.type(msg);
+    return { length: msg.length };
   }
 });
 
-// Define the workflow
 export const workflow = createWorkflow({
-  id: 'simple-notepad',
-  name: 'Simple Notepad Automation',
-  description: 'Opens Notepad and types a message'
+  id: 'mastra-notepad',
+  name: 'Mastra Notepad Workflow',
+  inputSchema: z.object({}),
+  outputSchema: z.object({ length: z.number() })
 })
   .then(openNotepad)
   .then(typeMessage)
   .commit();
-
-// Execute the workflow
-if (require.main === module) {
-  const desktop = new Desktop();
-  workflow.run({ desktop }).then(result => {
-    console.log('✅ Workflow completed:', result);
-  });
-}
 ```
 
-### Inngest-style Workflow
+### Inngest Style
 
-```javascript
-const { Desktop } = require('@mediar/terminator');
-const { Inngest } = require('inngest');
+```typescript
+import { Desktop } from '@mediar/terminator';
+import { Inngest } from 'inngest';
 
 const inngest = new Inngest({ id: 'terminator-automation' });
 
@@ -78,27 +161,23 @@ export default inngest.createFunction(
   async ({ event, step }) => {
     const desktop = new Desktop();
 
-    // Step 1: Open application
     await step.run('open-notepad', async () => {
-      console.log('🚀 Opening Notepad...');
+      console.log('🚀 Opening Notepad');
       desktop.openApplication('notepad');
       await new Promise(r => setTimeout(r, 2000));
       return { status: 'opened' };
     });
 
-    // Step 2: Type text
     const result = await step.run('type-message', async () => {
-      console.log('⌨️  Typing message...');
+      console.log('⌨️  Typing message');
       const textbox = desktop.locator('role:Edit');
-      await textbox.type('Hello from Inngest workflow!');
-      return { charactersTyped: 29 };
+      await textbox.type('Hello from Inngest!');
+      return { length: 17 };
     });
 
-    // Step 3: Take screenshot
     await step.run('take-screenshot', async () => {
-      console.log('📸 Taking screenshot...');
-      const screenshot = desktop.screenshot();
-      return { width: screenshot.width, height: screenshot.height };
+      console.log('📸 Screenshot');
+      return desktop.screenshot();
     });
 
     return { success: true, result };
@@ -106,257 +185,243 @@ export default inngest.createFunction(
 );
 ```
 
-### Inline Steps (Quick and Simple)
-
-For simpler workflows, you can define steps inline:
-
-```javascript
-const { Desktop } = require('@mediar/terminator');
-
-export const workflow = {
-  id: 'quick-automation',
-  name: 'Quick Automation',
-
-  async execute() {
-    const desktop = new Desktop();
-    const steps = [];
-
-    // Step 1
-    steps.push({
-      name: 'Open Calculator',
-      run: async () => {
-        desktop.openApplication('calc');
-        await new Promise(r => setTimeout(r, 2000));
-      }
-    });
-
-    // Step 2
-    steps.push({
-      name: 'Calculate 7 + 3',
-      run: async () => {
-        await desktop.locator('name:Seven').click();
-        await desktop.locator('name:Plus').click();
-        await desktop.locator('name:Three').click();
-        await desktop.locator('name:Equals').click();
-      }
-    });
-
-    // Execute all steps
-    for (const step of steps) {
-      console.log(`▶️  ${step.name}`);
-      await step.run();
-      console.log(`✅ ${step.name} completed`);
-    }
-  }
-};
-
-if (require.main === module) {
-  workflow.execute();
-}
-```
-
-## Parseable Structure for mediar-app
-
-The mediar-app can parse these workflows by looking for:
-
-### 1. Mastra Pattern
-```javascript
-createWorkflow({ id, name, description })
-  .then(createStep({ id, description, execute }))
-  .commit()
-```
-
-### 2. Inngest Pattern
-```javascript
-inngest.createFunction(
-  { id },
-  { event },
-  async ({ step }) => {
-    await step.run('step-id', async () => { ... });
-  }
-)
-```
-
-### 3. Simple Object Pattern
-```javascript
-export const workflow = {
-  id, name, description,
-  steps: [
-    { id, name, description, run: async () => { ... } }
-  ],
-  execute: async () => { ... }
-}
-```
-
 ## Full SDK Example
 
-Here's a comprehensive example using the terminator.js SDK:
+```typescript
+import { Desktop } from '@mediar/terminator';
 
-```javascript
-const { Desktop } = require('@mediar/terminator');
+export const workflow = {
+  id: 'web-form-automation',
+  name: 'Web Form Automation',
+  description: 'Fill and submit a web form',
+};
 
-async function automateWebForm() {
+async function main() {
   const desktop = new Desktop();
 
-  console.log('Step 1: Open Browser');
+  // Step 1: Open browser
+  console.log('🌐 Step 1: Opening browser');
   desktop.openUrl('https://example.com/form', 'Chrome');
   await new Promise(r => setTimeout(r, 3000));
 
-  console.log('Step 2: Fill Form Fields');
+  // Step 2: Fill form
+  console.log('📝 Step 2: Filling form');
   await desktop.locator('role:textbox|name:First Name').type('John');
   await desktop.locator('role:textbox|name:Last Name').type('Doe');
   await desktop.locator('role:textbox|name:Email').type('john@example.com');
 
-  console.log('Step 3: Select Dropdown');
+  // Step 3: Select dropdown
+  console.log('🔽 Step 3: Selecting country');
   await desktop.locator('role:combobox|name:Country').click();
   await desktop.locator('role:option|name:United States').click();
 
-  console.log('Step 4: Check Agreement');
-  await desktop.locator('role:checkbox|name:I agree').click();
-
-  console.log('Step 5: Submit Form');
+  // Step 4: Submit
+  console.log('✅ Step 4: Submitting');
   await desktop.locator('role:button|name:Submit').click();
 
-  console.log('Step 6: Verify Success');
+  // Step 5: Verify
+  console.log('🔍 Step 5: Verifying success');
   await desktop.locator('text:Thank you').waitFor({ timeout: 5000 });
 
-  console.log('✅ Form submission completed!');
+  console.log('✅ Form submitted successfully!');
 }
 
-// Export as workflow for parsing
-export const workflow = {
-  id: 'web-form-automation',
-  name: 'Web Form Automation',
-  description: 'Automates filling and submitting a web form',
-  execute: automateWebForm
-};
-
 if (require.main === module) {
-  automateWebForm().catch(console.error);
+  main().catch(console.error);
 }
 ```
 
-## Advanced: Variables and Dynamic Data
+## With Variables
 
-```javascript
-const { Desktop } = require('@mediar/terminator');
+```typescript
+import { Desktop } from '@mediar/terminator';
 
 export const workflow = {
   id: 'dynamic-workflow',
   name: 'Dynamic Data Entry',
 
-  // Define variables
   variables: {
     companyName: { type: 'string', default: 'Acme Corp' },
     entries: { type: 'array', default: [] }
-  },
-
-  async execute({ companyName, entries }) {
-    const desktop = new Desktop();
-
-    console.log(`Processing ${entries.length} entries for ${companyName}`);
-
-    for (const [index, entry] of entries.entries()) {
-      console.log(`Step ${index + 1}: Processing ${entry.name}`);
-
-      // Custom logic using SDK
-      await desktop.locator('role:textbox|name:Company').fill(companyName);
-      await desktop.locator('role:textbox|name:Name').fill(entry.name);
-      await desktop.locator('role:textbox|name:Amount').fill(entry.amount);
-      await desktop.locator('role:button|name:Add Entry').click();
-
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    console.log('✅ All entries processed');
   }
 };
+
+interface Entry {
+  name: string;
+  amount: string;
+}
+
+async function main(params: { companyName?: string; entries?: Entry[] } = {}) {
+  const { companyName = 'Acme Corp', entries = [] } = params;
+  const desktop = new Desktop();
+
+  console.log(`📊 Processing ${entries.length} entries for ${companyName}`);
+
+  for (const [index, entry] of entries.entries()) {
+    console.log(`▶️  Step ${index + 1}: ${entry.name}`);
+
+    await desktop.locator('role:textbox|name:Company').fill(companyName);
+    await desktop.locator('role:textbox|name:Name').fill(entry.name);
+    await desktop.locator('role:textbox|name:Amount').fill(entry.amount);
+    await desktop.locator('role:button|name:Add').click();
+
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  console.log('✅ All entries processed');
+}
+
+if (require.main === module) {
+  main({
+    companyName: 'My Company',
+    entries: [
+      { name: 'Item 1', amount: '100' },
+      { name: 'Item 2', amount: '200' }
+    ]
+  }).catch(console.error);
+}
+```
+
+## Helper Functions Pattern
+
+```typescript
+import { Desktop } from '@mediar/terminator';
+
+export const workflow = {
+  id: 'workflow-with-helpers',
+  name: 'Workflow with Helpers',
+};
+
+class WorkflowHelpers {
+  constructor(private desktop: Desktop) {}
+
+  async openApp(appName: string, waitMs = 2000) {
+    console.log(`🚀 Opening ${appName}...`);
+    this.desktop.openApplication(appName);
+    await this.wait(waitMs);
+  }
+
+  async typeInto(selector: string, text: string) {
+    console.log(`⌨️  Typing into ${selector}`);
+    await this.desktop.locator(selector).type(text);
+  }
+
+  async click(selector: string) {
+    console.log(`👆 Clicking ${selector}`);
+    await this.desktop.locator(selector).click();
+  }
+
+  async wait(ms: number) {
+    await new Promise(r => setTimeout(r, ms));
+  }
+
+  async screenshot(desc = 'screenshot') {
+    console.log(`📸 Taking ${desc}`);
+    return this.desktop.screenshot();
+  }
+}
+
+async function main() {
+  const desktop = new Desktop();
+  const helpers = new WorkflowHelpers(desktop);
+
+  await helpers.openApp('notepad', 3000);
+  await helpers.typeInto('role:Edit', 'Hello with helpers!');
+  await helpers.screenshot('result');
+
+  console.log('✅ Done');
+}
+
+if (require.main === module) {
+  main().catch(console.error);
+}
 ```
 
 ## Best Practices
 
-1. **Use Console Logs with Emojis**: Makes it easy for mediar-app to parse step execution
-2. **Consistent Step IDs**: Use kebab-case for step identifiers
-3. **Error Handling**: Wrap steps in try-catch for better error messages
-4. **Timeouts**: Use `setTimeout` or SDK's built-in wait methods
-5. **Return Values**: Return meaningful data from steps for debugging
+1. **Use TypeScript** - Get autocomplete and type safety
+2. **Console logs with emojis** - Makes step execution visible and parseable
+3. **Export workflow metadata** - Required for mediar-app UI
+4. **Error handling** - Wrap in try-catch for better debugging
+5. **Async/await** - Use promises for all SDK calls
+6. **Helper classes** - Reuse common patterns across workflows
 
 ## Execution
 
 ### From CLI
 ```bash
-node workflow.js
-```
+# TypeScript
+tsx workflow.ts
 
-### From Terminator CLI
-```bash
-terminator-cli execute-workflow --url file://./workflow.js
+# JavaScript
+node workflow.js
+
+# With Terminator CLI
+terminator-cli execute-workflow --url file://./workflow.ts
 ```
 
 ### From mediar-app
-Select the `.js` workflow file in the workflow list.
+Select the `.ts` or `.js` file in the workflow list - it will execute automatically.
 
 ## Metadata File (Optional)
 
-You can still include a `terminator.yml` for additional metadata:
+Add `terminator.yml` alongside your workflow:
 
 ```yaml
-name: My JavaScript Workflow
-description: Detailed description here
+name: My TypeScript Workflow
+description: Detailed description
 author: Your Name
 version: "1.0.0"
 tags:
   - automation
-  - javascript
-```
-
-## TypeScript Support
-
-For TypeScript workflows, use `.ts` extension:
-
-```typescript
-import { Desktop } from '@mediar/terminator';
-import { createWorkflow, createStep, WorkflowContext } from '@mediar/workflow';
-
-interface WorkflowInput {
-  userName: string;
-  email: string;
-}
-
-const fillUserForm = createStep<WorkflowInput>({
-  id: 'fill-user-form',
-  description: 'Fill user information form',
-  execute: async ({ desktop, input }) => {
-    await desktop.locator('role:textbox|name:Name').type(input.userName);
-    await desktop.locator('role:textbox|name:Email').type(input.email);
-    return { success: true };
-  }
-});
-
-export const workflow = createWorkflow<WorkflowInput>({
-  id: 'user-form-workflow',
-  name: 'User Form Workflow'
-})
-  .then(fillUserForm)
-  .commit();
+  - typescript
 ```
 
 ## Comparison with YAML Workflows
 
-| Feature | YAML Workflows | JavaScript Workflows |
+| Feature | YAML Workflows | TypeScript Workflows |
 |---------|---------------|---------------------|
-| Syntax | YAML with MCP tools | JavaScript with SDK |
+| Syntax | YAML + MCP tools | TypeScript + SDK |
 | IDE Support | Limited | Full autocomplete |
-| Code Reuse | Include other files | Import/export modules |
-| Type Safety | No | Yes (TypeScript) |
-| Debugging | Harder | Easier (breakpoints) |
-| mediar-app Parsing | Native | Via structure patterns |
+| Code Reuse | Limited | Full module system |
+| Type Safety | No | Yes |
+| Debugging | Harder | Easy (breakpoints) |
 | Learning Curve | Lower | Medium |
+| Power | Limited | Full programmatic control |
 
-## Framework Compatibility
+## TypeScript SDK Reference
 
-- **Mastra AI**: Use `createWorkflow` and `createStep` patterns
-- **Inngest**: Use `inngest.createFunction` with `step.run()`
-- **Custom**: Define your own patterns following the parseable structure guidelines
+```typescript
+import { Desktop, Element, Locator } from '@mediar/terminator';
 
-This approach gives you the best of both worlds: programmatic power and visual parseability!
+const desktop = new Desktop();
+
+// Applications
+desktop.openApplication('notepad');
+desktop.application('Chrome');
+desktop.activateApplication('Slack');
+
+// URLs & Files
+desktop.openUrl('https://example.com', 'Chrome');
+desktop.openFile('/path/to/file.pdf');
+
+// Locators (chainable)
+desktop.locator('role:Button').click();
+desktop.locator('name:Submit').type('text');
+desktop.locator('role:Edit|name:Search').fill('query');
+
+// Wait & Verify
+desktop.locator('text:Success').waitFor({ timeout: 5000 });
+
+// Screenshots
+const screenshot = desktop.screenshot();
+
+// Commands
+await desktop.run('echo "Hello"');
+await desktop.runCommand('dir', 'ls');
+
+// Browser
+const browser = await desktop.getCurrentBrowserWindow();
+```
+
+This approach gives you the full power of TypeScript with the terminator.js SDK!
