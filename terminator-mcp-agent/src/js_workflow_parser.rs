@@ -54,14 +54,22 @@ fn extract_workflow_export(content: &str) -> Result<Value> {
     let content = remove_comments(content);
 
     // Try different export patterns
+    // Try: export const workflow = {...}
     if let Ok(obj) = try_export_const_workflow(&content) {
         return Ok(obj);
     }
 
+    // Try: export const workflowDefinition = {...}
+    if let Ok(obj) = try_export_const_workflow_definition(&content) {
+        return Ok(obj);
+    }
+
+    // Try: export default {...}
     if let Ok(obj) = try_export_default(&content) {
         return Ok(obj);
     }
 
+    // Try: module.exports = {...}
     if let Ok(obj) = try_module_exports(&content) {
         return Ok(obj);
     }
@@ -84,6 +92,23 @@ fn try_export_const_workflow(content: &str) -> Result<Value> {
     }
 
     anyhow::bail!("No 'export const workflow' found")
+}
+
+/// Try to extract: export const workflowDefinition = {...}
+fn try_export_const_workflow_definition(content: &str) -> Result<Value> {
+    let re = Regex::new(r"export\s+const\s+workflowDefinition\s*=\s*")?;
+
+    if let Some(m) = re.find(content) {
+        let start = m.end();
+        if let Some(obj_str) = extract_balanced_braces(&content[start..]) {
+            debug!("Extracted workflowDefinition object (first 200 chars): {}", &obj_str.chars().take(200).collect::<String>());
+            return parse_object_literal(&obj_str);
+        } else {
+            debug!("Failed to extract balanced braces from: {}", &content[start..].chars().take(100).collect::<String>());
+        }
+    }
+
+    anyhow::bail!("No 'export const workflowDefinition' found")
 }
 
 /// Try to extract: export default {...}
@@ -887,6 +912,37 @@ export const workflow = {
         assert_eq!(args.get("steps").unwrap().as_array().unwrap().len(), 1);
         assert!(args.get("variables").is_none());
         assert!(args.get("inputs").is_none());
+    }
+
+    #[test]
+    fn test_export_const_workflow_definition() {
+        let js = r#"
+export const workflowDefinition = {
+  id: 'workflow-builder-example',
+  name: 'Workflow Builder Example',
+  description: 'Uses workflow builder',
+  version: '1.0.0',
+  steps: [
+    {
+      id: 'step1',
+      name: 'Open App'
+    }
+  ]
+};
+"#;
+        let result = parse_js_workflow(js);
+        if let Err(e) = &result {
+            eprintln!("Parse error: {}", e);
+        }
+        let workflow = result.unwrap();
+        assert_eq!(workflow.id, Some("workflow-builder-example".to_string()));
+        assert_eq!(workflow.name, Some("Workflow Builder Example".to_string()));
+        assert_eq!(workflow.version, Some("1.0.0".to_string()));
+        assert_eq!(workflow.steps.len(), 1);
+
+        let step = &workflow.steps[0];
+        assert_eq!(step.get("id").unwrap().as_str().unwrap(), "step1");
+        assert_eq!(step.get("name").unwrap().as_str().unwrap(), "Open App");
     }
 
     // ========================================================================

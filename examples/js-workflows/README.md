@@ -7,6 +7,9 @@ These examples demonstrate how to write automation workflows using the **termina
 ```bash
 npm install @mediar/terminator
 npm install -D typescript tsx @types/node
+
+# Optional: For structured workflow builder
+npm install @mediar/terminator-workflow
 ```
 
 ## Examples
@@ -51,6 +54,21 @@ tsx with-helpers.ts
 - Code reusability across workflows
 - Better code organization
 - TypeScript class methods
+
+### 4. With Workflow Builder (`with-workflow-builder.ts`) ⭐ Recommended
+
+Uses the `@mediar/terminator-workflow` package for clean, parseable structure.
+
+```bash
+tsx with-workflow-builder.ts --userName "Alice" --includeTimestamp true
+```
+
+**What it demonstrates:**
+- Structured workflow builder API
+- Parseable steps for mediar-app
+- Type-safe variables and context
+- Clean SDK code inside step blocks
+- Context sharing between steps
 
 ## Structure
 

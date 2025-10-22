@@ -1,0 +1,33 @@
+{
+  "name": "@mediar/terminator-workflow",
+  "version": "0.1.0",
+  "description": "Workflow builder for Terminator automation - provides parseable structure for mediar-app",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "terminator",
+    "automation",
+    "workflow",
+    "mediar"
+  ],
+  "author": "Mediar",
+  "license": "MIT",
+  "peerDependencies": {
+    "@mediar/terminator": "^0.17.0"
+  },
+  "devDependencies": {
+    "@mediar/terminator": "^0.17.0",
+    "typescript": "^5.0.0"
+  }
+}
